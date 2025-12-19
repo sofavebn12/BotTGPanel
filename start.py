@@ -29,7 +29,7 @@ def run_web_server():
         print("[WEB] Starting Flask server...")
         from server.app_factory import create_app
         app = create_app()
-        app.run(host="0.0.0.0", port=8000, debug=False, use_reloader=False)
+        app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
     except Exception as e:
         print(f"[WEB] [ERROR] {e}")
 
@@ -49,7 +49,7 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     
     print("[START] ✅ Starting both services...")
-    print("[START] Flask web server: http://0.0.0.0:8000")
+    print("[START] Flask web server: http://0.0.0.0:5000 (proxied via Nginx on port 80)")
     print("[START] Telegram bot: Running")
     print("[START] Press Ctrl+C to stop all services")
     print("-" * 60)
