@@ -1,0 +1,13 @@
+data/sessions/*.session
+data/sessions/*.session-journal
+__pycache__/
+*.pyc
+.venv/
+
+
+
+
+
+
+
+

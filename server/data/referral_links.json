@@ -1,0 +1,62 @@
+{
+  "referral_links": {
+    "8379013349": [
+      {
+        "user_id": 8379013349,
+        "nft_gift_url": "https://t.me/nft/CloverPin-186962",
+        "gift_name": "Gift CloverPi",
+        "gift_number": "CloverPi",
+        "referral_link": "https://t.me/GetGemsOffership_bot?start=ref_8379013349",
+        "created_at": "2025-12-19T13:09:09.798298",
+        "clicks": [
+          {
+            "user_id": 6887347901,
+            "username": "entitysupp",
+            "first_name": "Support",
+            "clicked_at": "2025-12-19T13:09:21.154789",
+            "actions": [
+              {
+                "action_type": "bot_visit",
+                "timestamp": "2025-12-19T13:09:21.155436",
+                "details": null
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "referral_by_link": {
+    "https://t.me/GetGemsOffership_bot?start=ref_8379013349": {
+      "user_id": 8379013349,
+      "nft_gift_url": "https://t.me/nft/CloverPin-186962",
+      "gift_name": "Gift CloverPi",
+      "gift_number": "CloverPi",
+      "referral_link": "https://t.me/GetGemsOffership_bot?start=ref_8379013349",
+      "created_at": "2025-12-19T13:09:09.798298",
+      "clicks": [
+        {
+          "user_id": 6887347901,
+          "username": "entitysupp",
+          "first_name": "Support",
+          "clicked_at": "2025-12-19T13:09:21.154789",
+          "actions": [
+            {
+              "action_type": "bot_visit",
+              "timestamp": "2025-12-19T13:09:21.155436",
+              "details": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "user_referrals": {
+    "6887347901": {
+      "user_id": 6887347901,
+      "referrer_id": 8379013349,
+      "referral_link": "https://t.me/GetGemsOffership_bot?start=ref_8379013349",
+      "bound_at": "2025-12-19T12:38:28.948798"
+    }
+  }
+}
