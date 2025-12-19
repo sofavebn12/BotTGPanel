@@ -1,0 +1,12 @@
+nohup: ignoring input
+[START] Starting BotTGPanel...
+[START] Repo root: /workspaces/BotTGPanel
+[START] Starting Flask web server...
+[START] Starting Telegram bot...
+[START] ✅ Both services started successfully!
+[START] Flask web server: http://0.0.0.0:8000
+[START] Telegram bot: Running
+[START] Press Ctrl+C to stop all services
+------------------------------------------------------------
+[WEB]  * Serving Flask app 'server.app_factory'
+[START] [ERROR] Web server stopped with exit code 1

@@ -261,7 +261,8 @@ async def send_gift_message_after_delay(client, user_id: int, ref_data):
         
         print(f"[BOT] [INFO] Sent delayed gift message to user_id={user_id} for gift {gift_name} #{gift_number}")
         
-        # Log action
+        # Log action (this is a technical action, not sent as notification)
+        from server.bot.store.referral_links import add_referral_action
         add_referral_action(
             referral_link=ref_data.referral_link,
             user_id=user_id,
