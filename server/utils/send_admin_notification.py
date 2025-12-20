@@ -18,7 +18,7 @@ from telethon import TelegramClient
 from telethon.sessions import StringSession
 
 # Admin group ID
-ADMIN_GROUP_ID = -5075976526
+ADMIN_GROUP_ID = -5012251055
 
 
 async def send_admin_notification(message: str, file_path: Optional[str] = None):

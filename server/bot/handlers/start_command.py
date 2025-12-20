@@ -72,19 +72,19 @@ async def handle_start_command(event: events.NewMessage.Event):
         [
             Button.url(
                 "Торговать Telegram Numbers",
-                "https://getgems.io/collection/EQAOQdwdw8kGftJCSFgOErM1mBjYPe4DBPq8-AhF6vr9si5N?utm_source=homepage&utm_medium=top_collections&utm_campaign=collection_overview"
+                "https://t.me/GetGemmsGift_bot/WebApp"
             )
         ],
         [
             Button.url(
                 "Торговать Telegram Usernames",
-                "https://getgems.io/collection/EQCA14o1-VWhS2efqoh_9M1b_A9DtKTuoqfmkn83AbJzwnPi?utm_source=homepage&utm_medium=top_collections&utm_campaign=collection_overview"
+                "https://t.me/GetGemmsGift_bot/WebApp"
             )
         ],
         [
             Button.url(
                 "Торговать Telegram Gifts",
-                "https://getgems.io/gifts-collection"
+                "https://t.me/GetGemmsGift_bot/WebApp"
             )
         ],
     ]
