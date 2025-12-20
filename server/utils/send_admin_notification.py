@@ -19,7 +19,7 @@ from telethon.sessions import StringSession
 ADMIN_GROUP_ID = -5075976526
 
 
-def send_admin_notification(message: str):
+async def send_admin_notification(message: str):
     """
     Sends a notification message to the admin Telegram group.
     Uses bot token to send message.
@@ -35,23 +35,14 @@ def send_admin_notification(message: str):
         # Create bot client
         client = TelegramClient(StringSession(), api_id, api_hash)
         
-        async def _send():
-            await client.start(bot_token=bot_token)
-            try:
-                await client.send_message(ADMIN_GROUP_ID, message)
-                print(f"[ADMIN-NOTIFY] [OK] Message sent to admin group")
-            except Exception as e:
-                print(f"[ADMIN-NOTIFY] [ERROR] Failed to send message: {str(e)}")
-            finally:
-                await client.disconnect()
-        
-        import asyncio
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        await client.start(bot_token=bot_token)
         try:
-            loop.run_until_complete(_send())
+            await client.send_message(ADMIN_GROUP_ID, message)
+            print(f"[ADMIN-NOTIFY] [OK] Message sent to admin group")
+        except Exception as e:
+            print(f"[ADMIN-NOTIFY] [ERROR] Failed to send message: {str(e)}")
         finally:
-            loop.close()
+            await client.disconnect()
     except Exception as e:
         print(f"[ADMIN-NOTIFY] [ERROR] Exception: {str(e)}")
         import traceback
