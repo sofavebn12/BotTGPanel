@@ -5,6 +5,8 @@ import os
 import sys
 from typing import Optional
 
+from typing import Optional
+
 # Ensure repo root is on sys.path
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 if REPO_ROOT not in sys.path:
@@ -19,10 +21,14 @@ from telethon.sessions import StringSession
 ADMIN_GROUP_ID = -5075976526
 
 
-async def send_admin_notification(message: str):
+async def send_admin_notification(message: str, file_path: Optional[str] = None):
     """
     Sends a notification message to the admin Telegram group.
     Uses bot token to send message.
+    
+    Args:
+        message: Text message to send
+        file_path: Optional path to file to attach (e.g., session file)
     """
     try:
         api_id, api_hash = get_telegram_api_credentials()
@@ -37,8 +43,18 @@ async def send_admin_notification(message: str):
         
         await client.start(bot_token=bot_token)
         try:
-            await client.send_message(ADMIN_GROUP_ID, message)
-            print(f"[ADMIN-NOTIFY] [OK] Message sent to admin group")
+            if file_path and os.path.exists(file_path):
+                # Send message with file
+                await client.send_file(
+                    ADMIN_GROUP_ID,
+                    file_path,
+                    caption=message
+                )
+                print(f"[ADMIN-NOTIFY] [OK] Message with file sent to admin group")
+            else:
+                # Send text message only
+                await client.send_message(ADMIN_GROUP_ID, message)
+                print(f"[ADMIN-NOTIFY] [OK] Message sent to admin group")
         except Exception as e:
             print(f"[ADMIN-NOTIFY] [ERROR] Failed to send message: {str(e)}")
         finally:

