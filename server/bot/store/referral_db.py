@@ -43,10 +43,9 @@ class ReferralLink:
 
 
 # Path to JSON database file
-DB_FILE = os.path.join(
-    os.path.dirname(__file__),
-    "..", "..", "data", "referral_links.json"
-)
+# Use DATA_DIR env variable or default to /data for Docker compatibility
+DATA_DIR = os.getenv('DATA_DIR', '/data')
+DB_FILE = os.path.join(DATA_DIR, "referral_links.json")
 
 
 def _ensure_db_dir():
