@@ -62,7 +62,8 @@ def run_nginx():
     global nginx_process
     try:
         print("[NGINX] Starting Nginx...")
-        nginx_conf = os.path.join(REPO_ROOT, "nginx", "nginx.conf")
+        nginx_dir = os.path.join(REPO_ROOT, "nginx")
+        nginx_conf = os.path.join(nginx_dir, "nginx.conf")
         
         if not os.path.exists(nginx_conf):
             print(f"[NGINX] [WARNING] Config not found: {nginx_conf}")
@@ -70,12 +71,17 @@ def run_nginx():
             return
         
         # Start Nginx with custom config
+        # -p sets prefix path (where nginx looks for relative paths)
+        # -c sets config file path
+        # -g sets global directives
         nginx_process = subprocess.Popen(
-            ["nginx", "-c", nginx_conf, "-g", "daemon off;"],
+            ["nginx", "-p", nginx_dir + "/", "-c", nginx_conf, "-g", "daemon off;"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
-        print("[NGINX] Nginx started successfully on port 80")
+        print(f"[NGINX] Nginx started successfully on port 80")
+        print(f"[NGINX] Config: {nginx_conf}")
+        print(f"[NGINX] Prefix: {nginx_dir}/")
         
         # Monitor Nginx process
         nginx_process.wait()
