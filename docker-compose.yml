@@ -7,15 +7,13 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATA_DIR=/data
+      - DATA_DIR=/app/data
       - TG_API_ID=${TG_API_ID}
       - TG_API_HASH=${TG_API_HASH}
       - BOT_TOKEN=${BOT_TOKEN}
     volumes:
-      # Mount data directory for persistent storage
-      - ./data:/data
-      # Mount sessions directory
-      - ./data/sessions:/app/data/sessions
+      # Mount data directory for persistent storage (sessions and JSON files)
+      - ./data:/app/data
     restart: unless-stopped
     networks:
       - bot-network
