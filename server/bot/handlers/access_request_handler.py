@@ -98,9 +98,13 @@ async def handle_approve_access_callback(event: events.CallbackQuery.Event):
         grant_access(user_id)
         remove_pending_request(user_id)
         
+        # Get original message text
+        message = await event.get_message()
+        original_text = message.text if message else "Заявка на доступ"
+        
         # Update message
         await event.edit(
-            f"{event.message.text}\n\n✅ **Заявка одобрена**",
+            f"{original_text}\n\n✅ **Заявка одобрена**",
             buttons=None
         )
         
@@ -149,9 +153,13 @@ async def handle_reject_access_callback(event: events.CallbackQuery.Event):
         # Remove from pending requests
         remove_pending_request(user_id)
         
+        # Get original message text
+        message = await event.get_message()
+        original_text = message.text if message else "Заявка на доступ"
+        
         # Update message
         await event.edit(
-            f"{event.message.text}\n\n❌ **Заявка отклонена**",
+            f"{original_text}\n\n❌ **Заявка отклонена**",
             buttons=None
         )
         
