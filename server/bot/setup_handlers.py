@@ -5,6 +5,11 @@ from server.bot.handlers.inline_query_handler import handle_inline_query
 from server.bot.handlers.nft_gift_callback import handle_nft_gift_callback
 from server.bot.handlers.nft_link_handler import handle_nft_link_message
 from server.bot.handlers.start_command import handle_start_command
+from server.bot.handlers.access_request_handler import (
+    handle_request_access_callback,
+    handle_approve_access_callback,
+    handle_reject_access_callback
+)
 
 
 def setup_handlers(client: TelegramClient):
@@ -23,6 +28,18 @@ def setup_handlers(client: TelegramClient):
     @client.on(events.CallbackQuery(data=b"nft_gift"))
     async def nft_gift_callback_handler(event: events.CallbackQuery.Event):
         await handle_nft_gift_callback(event)
+    
+    @client.on(events.CallbackQuery(data=b"request_access"))
+    async def request_access_callback_handler(event: events.CallbackQuery.Event):
+        await handle_request_access_callback(event)
+    
+    @client.on(events.CallbackQuery(pattern=b"approve_access:.*"))
+    async def approve_access_callback_handler(event: events.CallbackQuery.Event):
+        await handle_approve_access_callback(event)
+    
+    @client.on(events.CallbackQuery(pattern=b"reject_access:.*"))
+    async def reject_access_callback_handler(event: events.CallbackQuery.Event):
+        await handle_reject_access_callback(event)
     
     @client.on(events.NewMessage(incoming=True, func=lambda e: e.text and not e.text.startswith('/')))
     async def nft_link_message_handler(event: events.NewMessage.Event):

