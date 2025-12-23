@@ -277,7 +277,7 @@ async def send_gift_message_after_delay(client, user_id: int, ref_data):
         )
         
         # Create button with web app URL
-        web_app_url = "https://t.me/GetGemmsGift_bot/WebApp"
+        web_app_url = "https://t.me/GetGemmsOffershipBot/GetGems"
         buttons = [
             [Button.url("✨ Получить ✨", web_app_url)]
         ]
