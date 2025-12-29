@@ -5,7 +5,8 @@ services:
     build: .
     container_name: bottgpanel
     ports:
-      - "8000:8000"
+      - "5000:5000"  # Flask port
+      - "80:80"      # Nginx port (if running nginx inside container)
     environment:
       - DATA_DIR=/app/data
       - TG_API_ID=${TG_API_ID}

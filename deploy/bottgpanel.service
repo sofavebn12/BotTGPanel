@@ -1,0 +1,43 @@
+# Production Configuration for Flask + Gunicorn + Nginx
+
+[Unit]
+Description=BotTGPanel Flask Application
+After=network.target
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/workspaces/BotTGPanel
+Environment="PATH=/workspaces/BotTGPanel/venv/bin"
+Environment="PYTHONPATH=/workspaces/BotTGPanel"
+
+# Gunicorn configuration
+# -w 4: 4 worker processes
+# -b 0.0.0.0:5000: bind to all interfaces on port 5000
+# --timeout 60: 60 seconds timeout
+# --access-logfile -: log to stdout
+# --error-logfile -: log errors to stderr
+ExecStart=/workspaces/BotTGPanel/venv/bin/gunicorn \
+    -w 4 \
+    -b 0.0.0.0:5000 \
+    --timeout 60 \
+    --access-logfile - \
+    --error-logfile - \
+    run:app
+
+# Restart policy
+Restart=always
+RestartSec=5
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bottgpanel
+
+[Install]
+WantedBy=multi-user.target

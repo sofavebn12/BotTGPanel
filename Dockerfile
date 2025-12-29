@@ -15,8 +15,8 @@ RUN mkdir -p /data && chmod 777 /data
 # Set environment variable for data directory
 ENV DATA_DIR=/data
 
-# Expose port
-EXPOSE 8000
+# Expose ports
+EXPOSE 5000 80
 
 # Run the application
 CMD ["python", "start.py"]

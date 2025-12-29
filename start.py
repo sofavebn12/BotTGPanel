@@ -39,12 +39,16 @@ def signal_handler(sig, frame):
 def run_web_server():
     """Run Flask web server in thread"""
     try:
-        print("[WEB] Starting Flask server...")
+        print("[WEB] Starting Flask server on 0.0.0.0:5000...")
         from server.app_factory import create_app
         app = create_app()
-        app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+        # threaded=True для обработки одновременных запросов
+        # use_reloader=False чтобы не конфликтовать с threading
+        app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False, threaded=True)
     except Exception as e:
         print(f"[WEB] [ERROR] {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def run_bot():
